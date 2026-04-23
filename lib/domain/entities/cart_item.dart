@@ -1,3 +1,4 @@
+/// Pure domain entity.
 class CartItem {
   final String id;
   final String productId;
@@ -6,7 +7,7 @@ class CartItem {
   final String productName;
   final double price;
 
-  CartItem({
+  const CartItem({
     required this.id,
     required this.productId,
     required this.userId,
@@ -14,26 +15,4 @@ class CartItem {
     required this.productName,
     required this.price,
   });
-
-  factory CartItem.fromJson(Map<String, dynamic> json) {
-    return CartItem(
-      id: json['id'],
-      productId: json['product_id'],
-      userId: json['user_id'],
-      quantity: json['quantity'],
-      productName: json['product_name'] ?? '',
-      price: (json['price'] ?? 0).toDouble(),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'product_id': productId,
-      'user_id': userId,
-      'quantity': quantity,
-      'product_name': productName,
-      'price': price,
-    };
-  }
 }

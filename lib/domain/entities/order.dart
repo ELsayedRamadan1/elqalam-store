@@ -1,3 +1,4 @@
+/// Pure domain entities.
 class Order {
   final String id;
   final String userId;
@@ -6,7 +7,7 @@ class Order {
   final String status;
   final DateTime createdAt;
 
-  Order({
+  const Order({
     required this.id,
     required this.userId,
     required this.items,
@@ -14,28 +15,6 @@ class Order {
     required this.status,
     required this.createdAt,
   });
-
-  factory Order.fromJson(Map<String, dynamic> json) {
-    return Order(
-      id: json['id'],
-      userId: json['user_id'],
-      items: (json['items'] as List).map((e) => OrderItem.fromJson(e)).toList(),
-      total: json['total'].toDouble(),
-      status: json['status'],
-      createdAt: DateTime.parse(json['created_at']),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'user_id': userId,
-      'items': items.map((e) => e.toJson()).toList(),
-      'total': total,
-      'status': status,
-      'created_at': createdAt.toIso8601String(),
-    };
-  }
 }
 
 class OrderItem {
@@ -44,28 +23,10 @@ class OrderItem {
   final int quantity;
   final double price;
 
-  OrderItem({
+  const OrderItem({
     required this.productId,
     required this.productName,
     required this.quantity,
     required this.price,
   });
-
-  factory OrderItem.fromJson(Map<String, dynamic> json) {
-    return OrderItem(
-      productId: json['product_id'],
-      productName: json['product_name'],
-      quantity: json['quantity'],
-      price: json['price'].toDouble(),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'product_id': productId,
-      'product_name': productName,
-      'quantity': quantity,
-      'price': price,
-    };
-  }
 }

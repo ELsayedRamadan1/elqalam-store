@@ -26,4 +26,21 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<User?> getCurrentUser() async {
     return await datasource.getCurrentUser();
   }
+
+  @override
+  Future<User> updateProfile({
+    required String userId,
+    String? name,
+    String? phone,
+    String? address,
+    String? avatarUrl,
+  }) async {
+    return await datasource.updateProfile(
+      userId: userId,
+      name: name,
+      phone: phone,
+      address: address,
+      avatarUrl: avatarUrl,
+    );
+  }
 }

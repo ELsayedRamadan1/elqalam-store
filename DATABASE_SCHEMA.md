@@ -12,6 +12,7 @@ CREATE TABLE profiles (
   name VARCHAR(255) NOT NULL,
   phone VARCHAR(20),
   address TEXT,
+  avatar_url TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );

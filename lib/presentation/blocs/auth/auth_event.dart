@@ -28,4 +28,21 @@ class RegisterEvent extends AuthEvent {
 
 class LogoutEvent extends AuthEvent {}
 
+class UpdateProfileEvent extends AuthEvent {
+  final String? name;
+  final String? phone;
+  final String? address;
+  final String? avatarUrl;
+
+  UpdateProfileEvent({
+    this.name,
+    this.phone,
+    this.address,
+    this.avatarUrl,
+  });
+
+  @override
+  List<Object?> get props => [name, phone, address, avatarUrl];
+}
+
 class GetCurrentUserEvent extends AuthEvent {}

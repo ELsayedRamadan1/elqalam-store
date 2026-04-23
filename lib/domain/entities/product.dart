@@ -1,3 +1,4 @@
+/// Pure domain entity — no JSON, no Flutter, no external dependencies.
 class Product {
   final String id;
   final String name;
@@ -8,7 +9,7 @@ class Product {
   final int stock;
   final bool isAvailable;
 
-  Product({
+  const Product({
     required this.id,
     required this.name,
     required this.description,
@@ -18,30 +19,4 @@ class Product {
     required this.stock,
     required this.isAvailable,
   });
-
-  factory Product.fromJson(Map<String, dynamic> json) {
-    return Product(
-      id: json['id'],
-      name: json['name'],
-      description: json['description'],
-      price: json['price'].toDouble(),
-      imageUrl: json['image_url'],
-      categoryId: json['category_id'],
-      stock: json['stock'],
-      isAvailable: json['is_available'],
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'description': description,
-      'price': price,
-      'image_url': imageUrl,
-      'category_id': categoryId,
-      'stock': stock,
-      'is_available': isAvailable,
-    };
-  }
 }

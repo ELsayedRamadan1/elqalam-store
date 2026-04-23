@@ -34,7 +34,14 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     emit(state.copyWith(isLoading: true, error: null));
     try {
       final order = await createOrderUseCase(event.userId, event.items);
-      emit(state.copyWith(order: order, isLoading: false));
+      // Refresh the orders list and signal success with orderCreated = true
+      final orders = await getOrdersUseCase(event.userId);
+      emit(state.copyWith(
+        order: order,
+        orders: orders,
+        isLoading: false,
+        orderCreated: true,
+      ));
     } catch (e) {
       emit(state.copyWith(error: e.toString(), isLoading: false));
     }

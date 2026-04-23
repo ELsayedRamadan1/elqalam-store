@@ -27,10 +27,12 @@ import '../domain/usecases/clear_cart_usecase.dart';
 import '../domain/usecases/get_orders_usecase.dart';
 import '../domain/usecases/create_order_usecase.dart';
 import '../domain/usecases/get_order_usecase.dart';
+import '../domain/usecases/update_profile_usecase.dart';
 import '../presentation/blocs/auth/auth_bloc.dart';
 import '../presentation/blocs/product/product_bloc.dart';
 import '../presentation/blocs/cart/cart_bloc.dart';
 import '../presentation/blocs/order/order_bloc.dart';
+import '../presentation/blocs/theme/theme_bloc.dart';
 
 /// Service Locator for dependency injection
 /// This class handles the initialization and management of all dependencies
@@ -47,6 +49,7 @@ class ServiceLocator {
   late ProductBloc productBloc;
   late CartBloc cartBloc;
   late OrderBloc orderBloc;
+  late ThemeBloc themeBloc;
 
   Future<void> setup(SupabaseClient supabaseClient) async {
     // Datasources
@@ -66,6 +69,7 @@ class ServiceLocator {
     final registerUseCase = RegisterUseCase(authRepository);
     final logoutUseCase = LogoutUseCase(authRepository);
     final getCurrentUserUseCase = GetCurrentUserUseCase(authRepository);
+    final updateProfileUseCase = UpdateProfileUseCase(authRepository);
 
     // Product Usecases
     final getProductsUseCase = GetProductsUseCase(productRepository);
@@ -91,6 +95,7 @@ class ServiceLocator {
       registerUseCase: registerUseCase,
       logoutUseCase: logoutUseCase,
       getCurrentUserUseCase: getCurrentUserUseCase,
+      updateProfileUseCase: updateProfileUseCase,
     );
 
     productBloc = ProductBloc(
@@ -106,7 +111,6 @@ class ServiceLocator {
       updateCartItemUseCase: updateCartItemUseCase,
       removeFromCartUseCase: removeFromCartUseCase,
       clearCartUseCase: clearCartUseCase,
-      getProductUseCase: getProductUseCase,
     );
 
     orderBloc = OrderBloc(
@@ -114,5 +118,7 @@ class ServiceLocator {
       createOrderUseCase: createOrderUseCase,
       getOrderUseCase: getOrderUseCase,
     );
+
+    themeBloc = ThemeBloc();
   }
 }
