@@ -41,13 +41,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   ? CachedNetworkImage(
                       imageUrl: product.imageUrl,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         color: AppColors.background,
                         child: const Center(
                           child: CircularProgressIndicator(color: AppColors.primary),
                         ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         color: AppColors.background,
                         child: const Icon(Icons.shopping_bag_outlined,
                             size: 80, color: AppColors.primaryLight),

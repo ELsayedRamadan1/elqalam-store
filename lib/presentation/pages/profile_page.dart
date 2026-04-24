@@ -36,14 +36,34 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final permission = source == ImageSource.camera
-          ? await Permission.camera.request()
-          : await Permission.photos.request();
+      PermissionStatus permission;
+      
+      if (source == ImageSource.camera) {
+        permission = await Permission.camera.request();
+      } else {
+        // For gallery/photos - request both READ_MEDIA_IMAGES and READ_EXTERNAL_STORAGE
+        final mediaPermission = await Permission.photos.request();
+        final storagePermission = await Permission.storage.request();
+        
+        // Grant if either permission is granted
+        permission = (mediaPermission.isGranted || storagePermission.isGranted)
+            ? PermissionStatus.granted
+            : mediaPermission;
+      }
 
+      // If permission is still denied or restricted, show message with settings option
       if (!permission.isGranted) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('يجب منح الإذن للوصول إلى الصور')),
+            SnackBar(
+              content: const Text('يجب منح الإذن للوصول إلى الصور'),
+              action: SnackBarAction(
+                label: 'الإعدادات',
+                onPressed: () {
+                  openAppSettings();
+                },
+              ),
+            ),
           );
         }
         return;
@@ -348,21 +368,22 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: Column(
                     children: [
                       BlocBuilder<ThemeBloc, ThemeState>(
-                        builder: (context, themeState) {
+                        builder: (blocContext, themeState) {
+                          final isDarkMode = themeState.isDarkMode;
                           return ListTile(
                             leading: Icon(
-                              themeState.isDarkMode
+                              isDarkMode
                                   ? Icons.light_mode
                                   : Icons.dark_mode,
                               color: AppColors.primary,
                             ),
-                            title: Text(themeState.isDarkMode ? 'الوضع الفاتح' : 'الوضع المظلم'),
+                            title: Text(isDarkMode ? 'الوضع الفاتح' : 'الوضع المظلم'),
                             trailing: Switch(
-                              value: themeState.isDarkMode,
+                              value: isDarkMode,
                               onChanged: (value) {
-                                context.read<ThemeBloc>().add(ToggleThemeEvent());
+                                blocContext.read<ThemeBloc>().add(ToggleThemeEvent());
                               },
-                              activeColor: AppColors.primary,
+                              activeThumbColor: AppColors.primary,
                             ),
                           );
                         },

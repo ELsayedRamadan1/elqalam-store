@@ -18,7 +18,6 @@ import 'presentation/blocs/cart/cart_bloc.dart';
 import 'presentation/blocs/cart/cart_state.dart';
 import 'presentation/blocs/auth/auth_event.dart';
 import 'presentation/blocs/theme/theme_bloc.dart';
-import 'presentation/blocs/theme/theme_event.dart';
 import 'presentation/blocs/theme/theme_state.dart';
 
 Future<void> main() async {
@@ -63,28 +62,28 @@ final GoRouter _router = GoRouter(
       },
       branches: [
         StatefulShellBranch(routes: [
-          GoRoute(path: '/', builder: (_, __) => const HomePage()),
+          GoRoute(path: '/', builder: (_, _) => const HomePage()),
         ]),
         StatefulShellBranch(routes: [
           GoRoute(
             path: '/cart',
             redirect: _authGuard,
-            builder: (_, __) => const CartPage(),
+            builder: (_, _) => const CartPage(),
           ),
         ]),
         StatefulShellBranch(routes: [
           GoRoute(
             path: '/orders',
             redirect: _authGuard,
-            builder: (_, __) => const OrdersPage(),
+            builder: (_, _) => const OrdersPage(),
           ),
         ]),
         StatefulShellBranch(routes: [
-          GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
+          GoRoute(path: '/profile', builder: (_, _) => const ProfilePage()),
         ]),
       ],
     ),
-    GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
+    GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
   ],
 );
 
@@ -103,22 +102,24 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (_) => serviceLocator.orderBloc),
         BlocProvider(create: (_) => serviceLocator.themeBloc),
       ],
-      child: BlocBuilder<ThemeBloc, ThemeState>(
-        builder: (context, themeState) {
-          return MaterialApp.router(
-            title: 'القلم',
-            debugShowCheckedModeBanner: false,
-            theme: themeState.isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
-            routerConfig: _router,
-            builder: (context, child) {
-              return Directionality(
-                textDirection: TextDirection.rtl,
-                child: child!,
-              );
-            },
-          );
-        },
-      ),
+       child: BlocBuilder<ThemeBloc, ThemeState>(
+         builder: (context, themeState) {
+           return MaterialApp.router(
+             title: 'القلم',
+             debugShowCheckedModeBanner: false,
+             theme: AppTheme.lightTheme,
+             darkTheme: AppTheme.darkTheme,
+             themeMode: themeState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+             routerConfig: _router,
+             builder: (context, child) {
+               return Directionality(
+                 textDirection: TextDirection.rtl,
+                 child: child!,
+               );
+             },
+           );
+         },
+       ),
     );
   }
 }
@@ -220,4 +221,4 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
 }
 
 
-//flutter run --dart-define=SUPABASE_URL=https://kjsovaohtawvaivaplkg.supabase.co --dart-define=SUPABASE_ANON_KEY=sb_publishable_0Q3iN9W6TLJ9vJH64gAjsA_IvuOTDWx
+//flutter run --dart-define=SUPABASE_URL=https://kjsovaohtawvaivaplkg.supabase.co --dart-define=SUPABASE_ANON_KEY=sb_publishable_0Q3iN9W6TLJ9  vJH64gAjsA_IvuOTDWx
