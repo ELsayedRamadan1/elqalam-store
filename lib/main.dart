@@ -221,4 +221,4 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
 }
 
 
-//flutter run --dart-define=SUPABASE_URL=https://kjsovaohtawvaivaplkg.supabase.co --dart-define=SUPABASE_ANON_KEY=sb_publishable_0Q3iN9W6TLJ9  vJH64gAjsA_IvuOTDWx
+//flutter run --dart-define=SUPABASE_URL=https://kjsovaohtawvaivaplkg.supabase.co --dart-define=SUPABASE_ANON_KEY=sb_publishable_0Q3iN9W6TLJ9vJH64gAjsA_IvuOTDWx

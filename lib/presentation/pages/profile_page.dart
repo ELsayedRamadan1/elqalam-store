@@ -23,6 +23,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   bool _isEditingPhone = false;
   bool _isEditingAddress = false;
+  bool _isUploadingAvatar = false;
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
 
@@ -33,57 +34,72 @@ class _ProfilePageState extends State<ProfilePage> {
     super.dispose();
   }
 
-  /// دالة لعرض الصورة من user.avatarUrl (base64 أو URL)
-  ImageProvider? _getAvatarImage(String? avatarUrl) {
-    if (avatarUrl == null) return null;
-
-    // إذا كانت الصورة base64
-    if (avatarUrl.startsWith('data:image')) {
+  // بناء الـ avatar مع تجاهل الـ cache لكل URL جديد
+  Widget _buildAvatarContent(String? avatarUrl, String name) {
+    // base64 قديم — نعرضه مؤقتاً للتوافق
+    if (avatarUrl != null && avatarUrl.startsWith('data:image')) {
       try {
-        final base64String = avatarUrl.split(',').last;
-        final imageBytes = base64Decode(base64String);
-        return MemoryImage(imageBytes);
-      } catch (e) {
-        debugPrint('Error decoding base64 image: $e');
-        return null;
-      }
+        final bytes = base64Decode(avatarUrl.split(',').last);
+        return Image.memory(bytes, width: 90, height: 90, fit: BoxFit.cover);
+      } catch (_) {}
     }
 
-    // إذا كانت URL عادية
-    return CachedNetworkImageProvider(avatarUrl);
+    // URL من Supabase Storage
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      // الـ URL الكامل مع timestamp = cache key فريد لكل رفع جديد
+      // هذا يجبر CachedNetworkImage تحمّل الصورة الجديدة دائماً
+
+
+
+      return CachedNetworkImage(
+        imageUrl: avatarUrl,
+        cacheKey: avatarUrl, // URL كامل مع ?v=timestamp = key فريد
+        width: 90,
+        height: 90,
+        fit: BoxFit.cover,
+        placeholder: (_, __) => const SizedBox(
+          width: 40,
+          height: 40,
+          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+        ),
+        errorWidget: (_, url, error) {
+          debugPrint('Avatar load error: $error for $url');
+          return _initials(name);
+        },
+      );
+    }
+
+    return _initials(name);
   }
+
+  Widget _initials(String name) => Text(
+        name.isNotEmpty ? name[0].toUpperCase() : '؟',
+        style: const TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      );
 
   Future<void> _pickImage(ImageSource source) async {
     try {
       PermissionStatus permission;
-      
       if (source == ImageSource.camera) {
         permission = await Permission.camera.request();
       } else {
-        // For gallery/photos - request both READ_MEDIA_IMAGES and READ_EXTERNAL_STORAGE
-        final mediaPermission = await Permission.photos.request();
-        final storagePermission = await Permission.storage.request();
-        
-        // Grant if either permission is granted
-        permission = (mediaPermission.isGranted || storagePermission.isGranted)
+        final media = await Permission.photos.request();
+        final storage = await Permission.storage.request();
+        permission = (media.isGranted || storage.isGranted)
             ? PermissionStatus.granted
-            : mediaPermission;
+            : media;
       }
 
-      // If permission is still denied or restricted, show message with settings option
       if (!permission.isGranted) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('يجب منح الإذن للوصول إلى الصور'),
-              action: SnackBarAction(
-                label: 'الإعدادات',
-                onPressed: () {
-                  openAppSettings();
-                },
-              ),
-            ),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: const Text('يجب منح الإذن للوصول إلى الصور'),
+            action: SnackBarAction(label: 'الإعدادات', onPressed: openAppSettings),
+          ));
         }
         return;
       }
@@ -96,32 +112,30 @@ class _ProfilePageState extends State<ProfilePage> {
         imageQuality: 85,
       );
 
-      if (pickedFile != null && mounted) {
-         // Convert image to bytes and upload to Supabase Storage
-         try {
-           final imageBytes = await pickedFile.readAsBytes();
-          final fileName = pickedFile.name;
+      if (pickedFile == null || !mounted) return;
 
-          // Upload avatar using AuthBloc
-          if (mounted) {
-            context.read<AuthBloc>().add(UploadAvatarEvent(imageBytes, fileName));
-          }
+      setState(() => _isUploadingAvatar = true);
 
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('جاري رفع الصورة...')),
-            );
-          }
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('فشل في قراءة الصورة: $e')),
-            );
-          }
+      try {
+        final imageBytes = await pickedFile.readAsBytes();
+        if (!mounted) return;
+
+        context.read<AuthBloc>().add(UploadAvatarEvent(imageBytes, pickedFile.name));
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('جاري رفع الصورة...')),
+        );
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isUploadingAvatar = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('فشل في قراءة الصورة: $e')),
+          );
         }
       }
     } catch (e) {
       if (mounted) {
+        setState(() => _isUploadingAvatar = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('حدث خطأ: $e')),
         );
@@ -133,9 +147,7 @@ class _ProfilePageState extends State<ProfilePage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('اختر مصدر الصورة', textAlign: TextAlign.center),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -143,18 +155,12 @@ class _ProfilePageState extends State<ProfilePage> {
             ListTile(
               leading: const Icon(Icons.camera_alt),
               title: const Text('الكاميرا'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickImage(ImageSource.camera);
-              },
+              onTap: () { Navigator.pop(ctx); _pickImage(ImageSource.camera); },
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
               title: const Text('المعرض'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickImage(ImageSource.gallery);
-              },
+              onTap: () { Navigator.pop(ctx); _pickImage(ImageSource.gallery); },
             ),
           ],
         ),
@@ -163,39 +169,35 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _updateProfileField(String field, String value) async {
-    final authState = context.read<AuthBloc>().state;
-    if (authState.user == null) return;
-
-    try {
-      Map<String, String> updates = {};
-      if (field == 'phone') {
-        updates['phone'] = value;
-      } else if (field == 'address') {
-        updates['address'] = value;
-      }
-
-      context.read<AuthBloc>().add(UpdateProfileEvent(
-        phone: field == 'phone' ? value : null,
-        address: field == 'address' ? value : null,
-      ));
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حفظ التغييرات')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ: $e')),
-        );
-      }
+    context.read<AuthBloc>().add(UpdateProfileEvent(
+      phone: field == 'phone' ? value : null,
+      address: field == 'address' ? value : null,
+    ));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ التغييرات')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthBloc, app_auth.AuthState>(
+    return BlocConsumer<AuthBloc, app_auth.AuthState>(
+      // نتابع تغيير isLoading عشان نوقف spinner الرفع
+      listener: (context, state) {
+        if (!state.isLoading && _isUploadingAvatar) {
+          setState(() => _isUploadingAvatar = false);
+          if (state.error != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('فشل رفع الصورة: ${state.error}')),
+            );
+          } else if (state.user?.avatarUrl != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('✅ تم تحديث الصورة بنجاح')),
+            );
+          }
+        }
+      },
       builder: (context, authState) {
         if (authState.user == null) {
           return Center(
@@ -203,14 +205,9 @@ class _ProfilePageState extends State<ProfilePage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.person_outline,
-                      size: 50, color: AppColors.primaryLight),
+                  width: 100, height: 100,
+                  decoration: const BoxDecoration(color: AppColors.background, shape: BoxShape.circle),
+                  child: const Icon(Icons.person_outline, size: 50, color: AppColors.primaryLight),
                 ),
                 const SizedBox(height: 20),
                 const Text('يرجى تسجيل الدخول',
@@ -236,87 +233,70 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             children: [
               // Profile header
-              Stack(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primary, AppColors.primaryLight],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      children: [
-                        GestureDetector(
-                          onTap: _showImagePickerDialog,
-                          child: Stack(
-                            children: [
-                               CircleAvatar(
-                                 radius: 45,
-                                 backgroundColor: Colors.white.withValues(alpha: 0.3),
-                                 backgroundImage: _getAvatarImage(user.avatarUrl),
-                                 child: user.avatarUrl == null
-                                     ? Text(
-                                         user.name.isNotEmpty
-                                             ? user.name[0].toUpperCase()
-                                             : '؟',
-                                         style: const TextStyle(
-                                           fontSize: 32,
-                                           fontWeight: FontWeight.bold,
-                                           color: Colors.white,
-                                         ),
-                                       )
-                                     : null,
-                               ),
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.camera_alt,
-                                    size: 16,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          user.name,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          user.email,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.8),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryLight],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: _isUploadingAvatar ? null : _showImagePickerDialog,
+                      child: Stack(
+                        children: [
+                          // الصورة - ClipOval يضمن الشكل الدائري دائماً
+                          CircleAvatar(
+                            radius: 45,
+                            backgroundColor: Colors.white.withOpacity(0.3),
+                            child: ClipOval(
+                              child: _isUploadingAvatar
+                                  ? const SizedBox(
+                                      width: 90, height: 90,
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white, strokeWidth: 2),
+                                      ),
+                                    )
+                                  : SizedBox(
+                                      width: 90, height: 90,
+                                      child: _buildAvatarContent(user.avatarUrl, user.name),
+                                    ),
+                            ),
+                          ),
+                          // أيقونة الكاميرا
+                          if (!_isUploadingAvatar)
+                            Positioned(
+                              bottom: 0, right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: Colors.white, shape: BoxShape.circle),
+                                child: const Icon(Icons.camera_alt,
+                                    size: 16, color: AppColors.primary),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(user.name,
+                        style: const TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                    const SizedBox(height: 4),
+                    Text(user.email,
+                        style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14)),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 20),
 
-              // Contact Info
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -336,24 +316,18 @@ class _ProfilePageState extends State<ProfilePage> {
                         editable: true,
                         isEditing: _isEditingPhone,
                         controller: _phoneController,
-                        onEdit: () {
-                          setState(() {
-                            _isEditingPhone = true;
-                            _phoneController.text = user.phone ?? '';
-                          });
-                        },
+                        onEdit: () => setState(() {
+                          _isEditingPhone = true;
+                          _phoneController.text = user.phone ?? '';
+                        }),
                         onSave: () {
                           _updateProfileField('phone', _phoneController.text.trim());
-                          setState(() {
-                            _isEditingPhone = false;
-                          });
+                          setState(() => _isEditingPhone = false);
                         },
-                        onCancel: () {
-                          setState(() {
-                            _isEditingPhone = false;
-                            _phoneController.clear();
-                          });
-                        },
+                        onCancel: () => setState(() {
+                          _isEditingPhone = false;
+                          _phoneController.clear();
+                        }),
                       ),
                       const Divider(height: 1, indent: 56),
                       _EditableInfoTile(
@@ -363,24 +337,18 @@ class _ProfilePageState extends State<ProfilePage> {
                         editable: true,
                         isEditing: _isEditingAddress,
                         controller: _addressController,
-                        onEdit: () {
-                          setState(() {
-                            _isEditingAddress = true;
-                            _addressController.text = user.address ?? '';
-                          });
-                        },
+                        onEdit: () => setState(() {
+                          _isEditingAddress = true;
+                          _addressController.text = user.address ?? '';
+                        }),
                         onSave: () {
                           _updateProfileField('address', _addressController.text.trim());
-                          setState(() {
-                            _isEditingAddress = false;
-                          });
+                          setState(() => _isEditingAddress = false);
                         },
-                        onCancel: () {
-                          setState(() {
-                            _isEditingAddress = false;
-                            _addressController.clear();
-                          });
-                        },
+                        onCancel: () => setState(() {
+                          _isEditingAddress = false;
+                          _addressController.clear();
+                        }),
                       ),
                     ],
                   ),
@@ -389,73 +357,56 @@ class _ProfilePageState extends State<ProfilePage> {
 
               const SizedBox(height: 20),
 
-              // Settings
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      BlocBuilder<ThemeBloc, ThemeState>(
-                        builder: (blocContext, themeState) {
-                          final isDarkMode = themeState.isDarkMode;
-                          return ListTile(
-                            leading: Icon(
-                              isDarkMode
-                                  ? Icons.light_mode
-                                  : Icons.dark_mode,
-                              color: AppColors.primary,
-                            ),
-                            title: Text(isDarkMode ? 'الوضع الفاتح' : 'الوضع المظلم'),
-                            trailing: Switch(
-                              value: isDarkMode,
-                              onChanged: (value) {
-                                blocContext.read<ThemeBloc>().add(ToggleThemeEvent());
-                              },
-                              activeThumbColor: AppColors.primary,
-                            ),
-                          );
-                        },
+                  child: BlocBuilder<ThemeBloc, ThemeState>(
+                    builder: (ctx, themeState) => ListTile(
+                      leading: Icon(
+                        themeState.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+                        color: AppColors.primary,
                       ),
-                    ],
+                      title: Text(themeState.isDarkMode ? 'الوضع الفاتح' : 'الوضع المظلم'),
+                      trailing: Switch(
+                        value: themeState.isDarkMode,
+                        onChanged: (_) => ctx.read<ThemeBloc>().add(ToggleThemeEvent()),
+                        activeThumbColor: AppColors.primary,
+                      ),
+                    ),
                   ),
                 ),
               ),
 
               const SizedBox(height: 20),
 
-              // Logout
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
-                        title: const Text('تسجيل الخروج',
-                            textAlign: TextAlign.center),
-                        content: const Text('هل أنت متأكد من تسجيل الخروج؟',
-                            textAlign: TextAlign.center),
-                        actions: [
-                          TextButton(
+                  onPressed: () => showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                      title: const Text('تسجيل الخروج', textAlign: TextAlign.center),
+                      content: const Text('هل أنت متأكد من تسجيل الخروج؟',
+                          textAlign: TextAlign.center),
+                      actions: [
+                        TextButton(
                             onPressed: () => Navigator.pop(ctx),
-                            child: const Text('إلغاء'),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.error),
-                            onPressed: () {
-                              Navigator.pop(ctx);
-                              context.read<AuthBloc>().add(LogoutEvent());
-                              context.go('/');
-                            },
-                            child: const Text('خروج'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                            child: const Text('إلغاء')),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.error),
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            context.read<AuthBloc>().add(LogoutEvent());
+                            context.go('/');
+                          },
+                          child: const Text('خروج'),
+                        ),
+                      ],
+                    ),
+                  ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.error,
                     side: const BorderSide(color: AppColors.error),
@@ -506,52 +457,42 @@ class _EditableInfoTile extends StatelessWidget {
     return ListTile(
       leading: Icon(icon, color: AppColors.primary),
       title: Text(title,
-          style: const TextStyle(
-              fontSize: 12, color: AppColors.textSecondary)),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
       subtitle: isEditing
           ? TextField(
               controller: controller,
               autofocus: true,
               decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-              ),
+                  border: InputBorder.none, contentPadding: EdgeInsets.zero),
               style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w500,
-              ),
+                  color: AppColors.textPrimary, fontWeight: FontWeight.w500),
             )
-          : Text(
-              value,
+          : Text(value,
               style: TextStyle(
                 color: value == 'لم يتم تحديده'
                     ? AppColors.textSecondary
                     : AppColors.textPrimary,
                 fontWeight: FontWeight.w500,
-              ),
-            ),
+              )),
       trailing: editable
           ? isEditing
               ? Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.check, color: AppColors.success),
-                      onPressed: onSave,
-                      iconSize: 20,
-                    ),
+                        icon: const Icon(Icons.check, color: AppColors.success),
+                        onPressed: onSave,
+                        iconSize: 20),
                     IconButton(
-                      icon: const Icon(Icons.close, color: AppColors.error),
-                      onPressed: onCancel,
-                      iconSize: 20,
-                    ),
+                        icon: const Icon(Icons.close, color: AppColors.error),
+                        onPressed: onCancel,
+                        iconSize: 20),
                   ],
                 )
               : IconButton(
                   icon: const Icon(Icons.edit, color: AppColors.primary),
                   onPressed: onEdit,
-                  iconSize: 20,
-                )
+                  iconSize: 20)
           : null,
       onTap: editable && !isEditing ? onEdit : null,
     );

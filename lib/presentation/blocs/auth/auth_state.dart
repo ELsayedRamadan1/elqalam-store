@@ -16,9 +16,10 @@ class AuthState extends Equatable {
     User? user,
     bool? isLoading,
     String? error,
+    bool clearUser = false,
   }) {
     return AuthState(
-      user: user ?? this.user,
+      user: clearUser ? null : (user ?? this.user),
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
     );
