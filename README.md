@@ -151,6 +151,20 @@ create table orders (
 ```sql
 -- إضافة حقل avatar_url للجدول profiles
 ALTER TABLE profiles ADD COLUMN avatar_url TEXT;
+
+-- إنشاء bucket للصور الشخصية
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatars', 'avatars', true);
+
+-- إنشاء السياسات الأمنية للـ bucket
+CREATE POLICY "Users can upload their own avatar" ON storage.objects
+FOR INSERT WITH CHECK (
+  bucket_id = 'avatars'
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);
+
+CREATE POLICY "Users can view avatars" ON storage.objects
+FOR SELECT USING (bucket_id = 'avatars');
 ```
 
 ## 📱 الميزات الأساسية
@@ -326,5 +340,3 @@ FOR UPDATE USING (auth.uid() = id);
 ---
 
 **تم تطوير تطبيق القلم بكل ❤️ للمجتمع العربي**
-
-

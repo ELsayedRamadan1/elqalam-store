@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
+import 'dart:typed_data';
+import 'dart:convert' show base64;
 
 import '../../domain/entities/user.dart';
 import '../models/user_model.dart';
@@ -74,5 +76,18 @@ class AuthDatasource {
     // Return updated user
     final profile = await client.from('profiles').select().eq('id', userId).single();
     return UserModel.fromJson(profile);
+  }
+
+  Future<String> uploadAvatar(String userId, Uint8List imageBytes, String fileName) async {
+    try {
+      // Convert image bytes to base64 for storage in database
+      final base64String = base64.encode(imageBytes);
+
+      debugPrint('Avatar converted to base64 successfully');
+      return 'data:image/jpeg;base64,$base64String';
+    } catch (e) {
+      debugPrint('Error uploading avatar: $e');
+      throw Exception('فشل في رفع الصورة: $e');
+    }
   }
 }

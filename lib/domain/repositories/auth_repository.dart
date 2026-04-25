@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../domain/entities/user.dart';
 
 abstract class AuthRepository {
@@ -12,4 +14,5 @@ abstract class AuthRepository {
     String? address,
     String? avatarUrl,
   });
+  Future<String> uploadAvatar(String userId, Uint8List imageBytes, String fileName);
 }

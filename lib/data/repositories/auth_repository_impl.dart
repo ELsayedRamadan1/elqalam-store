@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/entities/user.dart';
 import '../datasources/auth_datasource.dart' as auth_ds;
@@ -42,5 +44,10 @@ class AuthRepositoryImpl implements AuthRepository {
       address: address,
       avatarUrl: avatarUrl,
     );
+  }
+
+  @override
+  Future<String> uploadAvatar(String userId, Uint8List imageBytes, String fileName) async {
+    return await datasource.uploadAvatar(userId, imageBytes, fileName);
   }
 }

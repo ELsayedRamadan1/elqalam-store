@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'dart:typed_data';
 
 abstract class AuthEvent extends Equatable {
   @override
@@ -46,3 +47,13 @@ class UpdateProfileEvent extends AuthEvent {
 }
 
 class GetCurrentUserEvent extends AuthEvent {}
+
+class UploadAvatarEvent extends AuthEvent {
+  final Uint8List imageBytes;
+  final String fileName;
+
+  UploadAvatarEvent(this.imageBytes, this.fileName);
+
+  @override
+  List<Object?> get props => [imageBytes, fileName];
+}

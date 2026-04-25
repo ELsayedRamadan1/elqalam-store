@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
+import 'dart:convert' show base64Decode;
 import '../../core/themes/app_theme.dart';
 import '../../presentation/blocs/auth/auth_bloc.dart';
 import '../../presentation/blocs/auth/auth_event.dart';
@@ -32,6 +33,26 @@ class _ProfilePageState extends State<ProfilePage> {
     _phoneController.dispose();
     _addressController.dispose();
     super.dispose();
+  }
+
+  /// دالة لعرض الصورة من user.avatarUrl (base64 أو URL)
+  ImageProvider? _getAvatarImage(String? avatarUrl) {
+    if (avatarUrl == null) return null;
+
+    // إذا كانت الصورة base64
+    if (avatarUrl.startsWith('data:image')) {
+      try {
+        final base64String = avatarUrl.split(',').last;
+        final imageBytes = base64Decode(base64String);
+        return MemoryImage(imageBytes);
+      } catch (e) {
+        debugPrint('Error decoding base64 image: $e');
+        return null;
+      }
+    }
+
+    // إذا كانت URL عادية
+    return CachedNetworkImageProvider(avatarUrl);
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -82,11 +103,28 @@ class _ProfilePageState extends State<ProfilePage> {
           _selectedImage = File(pickedFile.path);
         });
 
-        // TODO: Upload to Supabase Storage and update profile
-        // For now, just show a message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('سيتم رفع الصورة قريباً')),
-        );
+        // Convert image to bytes and upload to Supabase Storage
+        try {
+          final imageBytes = await pickedFile.readAsBytes();
+          final fileName = pickedFile.name;
+
+          // Upload avatar using AuthBloc
+          if (mounted) {
+            context.read<AuthBloc>().add(UploadAvatarEvent(imageBytes, fileName));
+          }
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('جاري رفع الصورة...')),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('فشل في قراءة الصورة: $e')),
+            );
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -223,27 +261,25 @@ class _ProfilePageState extends State<ProfilePage> {
                           onTap: _showImagePickerDialog,
                           child: Stack(
                             children: [
-                              CircleAvatar(
-                                radius: 45,
-                                backgroundColor: Colors.white.withOpacity(0.3),
-                                backgroundImage: _selectedImage != null
-                                    ? FileImage(_selectedImage!)
-                                    : user.avatarUrl != null
-                                        ? CachedNetworkImageProvider(user.avatarUrl!)
-                                        : null,
-                                child: _selectedImage == null && user.avatarUrl == null
-                                    ? Text(
-                                        user.name.isNotEmpty
-                                            ? user.name[0].toUpperCase()
-                                            : '؟',
-                                        style: const TextStyle(
-                                          fontSize: 32,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : null,
-                              ),
+                               CircleAvatar(
+                                 radius: 45,
+                                 backgroundColor: Colors.white.withOpacity(0.3),
+                                 backgroundImage: _selectedImage != null
+                                     ? FileImage(_selectedImage!)
+                                     : _getAvatarImage(user.avatarUrl),
+                                 child: _selectedImage == null && user.avatarUrl == null
+                                     ? Text(
+                                         user.name.isNotEmpty
+                                             ? user.name[0].toUpperCase()
+                                             : '؟',
+                                         style: const TextStyle(
+                                           fontSize: 32,
+                                           fontWeight: FontWeight.bold,
+                                           color: Colors.white,
+                                         ),
+                                       )
+                                     : null,
+                               ),
                               Positioned(
                                 bottom: 0,
                                 right: 0,

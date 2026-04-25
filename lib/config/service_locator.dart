@@ -28,6 +28,7 @@ import '../domain/usecases/get_orders_usecase.dart';
 import '../domain/usecases/create_order_usecase.dart';
 import '../domain/usecases/get_order_usecase.dart';
 import '../domain/usecases/update_profile_usecase.dart';
+import '../domain/usecases/upload_avatar_usecase.dart';
 import '../presentation/blocs/auth/auth_bloc.dart';
 import '../presentation/blocs/product/product_bloc.dart';
 import '../presentation/blocs/cart/cart_bloc.dart';
@@ -70,6 +71,7 @@ class ServiceLocator {
     final logoutUseCase = LogoutUseCase(authRepository);
     final getCurrentUserUseCase = GetCurrentUserUseCase(authRepository);
     final updateProfileUseCase = UpdateProfileUseCase(authRepository);
+    final uploadAvatarUseCase = UploadAvatarUseCase(authRepository);
 
     // Product Usecases
     final getProductsUseCase = GetProductsUseCase(productRepository);
@@ -96,6 +98,7 @@ class ServiceLocator {
       logoutUseCase: logoutUseCase,
       getCurrentUserUseCase: getCurrentUserUseCase,
       updateProfileUseCase: updateProfileUseCase,
+      uploadAvatarUseCase: uploadAvatarUseCase,
     );
 
     productBloc = ProductBloc(

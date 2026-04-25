@@ -8,6 +8,7 @@ import 'package:elqalam/domain/usecases/register_usecase.dart';
 import 'package:elqalam/domain/usecases/logout_usecase.dart';
 import 'package:elqalam/domain/usecases/get_current_user_usecase.dart';
 import 'package:elqalam/domain/usecases/update_profile_usecase.dart';
+import 'package:elqalam/domain/usecases/upload_avatar_usecase.dart';
 import 'package:elqalam/presentation/blocs/auth/auth_bloc.dart';
 import 'package:elqalam/presentation/blocs/auth/auth_event.dart';
 import 'package:elqalam/presentation/blocs/auth/auth_state.dart';
@@ -18,6 +19,7 @@ class MockRegisterUseCase extends Mock implements RegisterUseCase {}
 class MockLogoutUseCase extends Mock implements LogoutUseCase {}
 class MockGetCurrentUserUseCase extends Mock implements GetCurrentUserUseCase {}
 class MockUpdateProfileUseCase extends Mock implements UpdateProfileUseCase {}
+class MockUploadAvatarUseCase extends Mock implements UploadAvatarUseCase {}
 
 void main() {
   late MockLoginUseCase loginUseCase;
@@ -25,6 +27,7 @@ void main() {
   late MockLogoutUseCase logoutUseCase;
   late MockGetCurrentUserUseCase getCurrentUserUseCase;
   late MockUpdateProfileUseCase updateProfileUseCase;
+  late MockUploadAvatarUseCase uploadAvatarUseCase;
 
   const testUser = User(id: '1', email: 'test@test.com', name: 'Test');
 
@@ -34,6 +37,7 @@ void main() {
     logoutUseCase = MockLogoutUseCase();
     getCurrentUserUseCase = MockGetCurrentUserUseCase();
     updateProfileUseCase = MockUpdateProfileUseCase();
+    uploadAvatarUseCase = MockUploadAvatarUseCase();
   });
 
   AuthBloc buildBloc() => AuthBloc(
@@ -42,6 +46,7 @@ void main() {
         logoutUseCase: logoutUseCase,
         getCurrentUserUseCase: getCurrentUserUseCase,
         updateProfileUseCase: updateProfileUseCase,
+        uploadAvatarUseCase: uploadAvatarUseCase,
       );
 
   group('AuthBloc', () {
