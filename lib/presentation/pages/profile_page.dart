@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'dart:io';
 import 'dart:convert' show base64Decode;
 import '../../core/themes/app_theme.dart';
 import '../../presentation/blocs/auth/auth_bloc.dart';
@@ -22,7 +21,6 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  File? _selectedImage;
   bool _isEditingPhone = false;
   bool _isEditingAddress = false;
   final TextEditingController _phoneController = TextEditingController();
@@ -99,13 +97,9 @@ class _ProfilePageState extends State<ProfilePage> {
       );
 
       if (pickedFile != null && mounted) {
-        setState(() {
-          _selectedImage = File(pickedFile.path);
-        });
-
-        // Convert image to bytes and upload to Supabase Storage
-        try {
-          final imageBytes = await pickedFile.readAsBytes();
+         // Convert image to bytes and upload to Supabase Storage
+         try {
+           final imageBytes = await pickedFile.readAsBytes();
           final fileName = pickedFile.name;
 
           // Upload avatar using AuthBloc
@@ -263,11 +257,9 @@ class _ProfilePageState extends State<ProfilePage> {
                             children: [
                                CircleAvatar(
                                  radius: 45,
-                                 backgroundColor: Colors.white.withOpacity(0.3),
-                                 backgroundImage: _selectedImage != null
-                                     ? FileImage(_selectedImage!)
-                                     : _getAvatarImage(user.avatarUrl),
-                                 child: _selectedImage == null && user.avatarUrl == null
+                                 backgroundColor: Colors.white.withValues(alpha: 0.3),
+                                 backgroundImage: _getAvatarImage(user.avatarUrl),
+                                 child: user.avatarUrl == null
                                      ? Text(
                                          user.name.isNotEmpty
                                              ? user.name[0].toUpperCase()
@@ -312,7 +304,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         Text(
                           user.email,
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 14,
                           ),
                         ),
