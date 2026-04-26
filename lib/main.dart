@@ -222,3 +222,8 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
 
 
 //flutter run --dart-define=SUPABASE_URL=https://kjsovaohtawvaivaplkg.supabase.co --dart-define=SUPABASE_ANON_KEY=sb_publishable_0Q3iN9W6TLJ9vJH64gAjsA_IvuOTDWx
+//git add .
+//
+// git commit -m "update project"
+//
+// git push origin main
