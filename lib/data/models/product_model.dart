@@ -16,12 +16,12 @@ class ProductModel extends Product {
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
       description: json['description'] as String? ?? '',
-      price: (json['price'] as num).toDouble(),
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
       imageUrl: json['image_url'] as String? ?? '',
-      categoryId: json['category_id'] as String,
+      categoryId: json['category_id'] as String? ?? '',
       stock: json['stock'] as int? ?? 0,
       isAvailable: json['is_available'] as bool? ?? false,
     );

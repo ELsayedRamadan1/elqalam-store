@@ -12,6 +12,7 @@ import 'presentation/pages/cart_page.dart';
 import 'presentation/pages/orders_page.dart';
 import 'presentation/pages/profile_page.dart';
 import 'presentation/pages/login_page.dart';
+import 'presentation/pages/favorites_page.dart';
 import 'presentation/blocs/auth/auth_bloc.dart';
 import 'presentation/blocs/auth/auth_state.dart' as app_auth;
 import 'presentation/blocs/cart/cart_bloc.dart';
@@ -19,6 +20,8 @@ import 'presentation/blocs/cart/cart_state.dart';
 import 'presentation/blocs/auth/auth_event.dart';
 import 'presentation/blocs/theme/theme_bloc.dart';
 import 'presentation/blocs/theme/theme_state.dart';
+import 'presentation/blocs/favorites/favorites_bloc.dart';
+import 'presentation/blocs/favorites/favorites_event.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,9 +32,6 @@ Future<void> main() async {
   ]);
 
   AppConstants.validate();
-
-  // Initialize intl locale data used by DateFormat in the app (e.g. Arabic)
-  // This must run before any DateFormat(..., locale) usage.
   await initializeDateFormatting('ar');
 
   await Supabase.initialize(
@@ -42,7 +42,6 @@ Future<void> main() async {
   final serviceLocator = ServiceLocator();
   await serviceLocator.setup(Supabase.instance.client);
 
-  // Check for existing user session on app start
   serviceLocator.authBloc.add(GetCurrentUserEvent());
 
   runApp(MyApp(serviceLocator: serviceLocator));
@@ -62,34 +61,39 @@ final GoRouter _router = GoRouter(
       },
       branches: [
         StatefulShellBranch(routes: [
-          GoRoute(path: '/', builder: (_, _) => const HomePage()),
+          GoRoute(path: '/', builder: (_, __) => const HomePage()),
+        ]),
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/favorites',
+            builder: (_, __) => const Scaffold(body: FavoritesView()),
+          ),
         ]),
         StatefulShellBranch(routes: [
           GoRoute(
             path: '/cart',
             redirect: _authGuard,
-            builder: (_, _) => const CartPage(),
+            builder: (_, __) => const CartPage(),
           ),
         ]),
         StatefulShellBranch(routes: [
           GoRoute(
             path: '/orders',
             redirect: _authGuard,
-            builder: (_, _) => const OrdersPage(),
+            builder: (_, __) => const OrdersPage(),
           ),
         ]),
         StatefulShellBranch(routes: [
-          GoRoute(path: '/profile', builder: (_, _) => const ProfilePage()),
+          GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
         ]),
       ],
     ),
-    GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
+    GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
   ],
 );
 
 class MyApp extends StatelessWidget {
   final ServiceLocator serviceLocator;
-
   const MyApp({super.key, required this.serviceLocator});
 
   @override
@@ -100,26 +104,28 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (_) => serviceLocator.productBloc),
         BlocProvider(create: (_) => serviceLocator.cartBloc),
         BlocProvider(create: (_) => serviceLocator.orderBloc),
+        BlocProvider(create: (_) => serviceLocator.favoritesBloc),
         BlocProvider(create: (_) => serviceLocator.themeBloc),
       ],
-       child: BlocBuilder<ThemeBloc, ThemeState>(
-         builder: (context, themeState) {
-           return MaterialApp.router(
-             title: 'القلم',
-             debugShowCheckedModeBanner: false,
-             theme: AppTheme.lightTheme,
-             darkTheme: AppTheme.darkTheme,
-             themeMode: themeState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-             routerConfig: _router,
-             builder: (context, child) {
-               return Directionality(
-                 textDirection: TextDirection.rtl,
-                 child: child!,
-               );
-             },
-           );
-         },
-       ),
+      child: BlocBuilder<ThemeBloc, ThemeState>(
+        builder: (context, themeState) {
+          return MaterialApp.router(
+            title: 'القلم',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode:
+                themeState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            routerConfig: _router,
+            builder: (context, child) {
+              return Directionality(
+                textDirection: TextDirection.rtl,
+                child: child!,
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
@@ -132,15 +138,28 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
 
   final StatefulNavigationShell navigationShell;
 
+  // Load favorites whenever user lands on the tab
+  void _onTap(BuildContext context, int index) {
+    navigationShell.goBranch(index);
+    if (index == 1) {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        context
+            .read<FavoritesBloc>()
+            .add(LoadFavoritesEvent(user.id));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final titles = ['الرئيسية', 'السلة', 'طلباتي', 'حسابي'];
+    final titles = ['الرئيسية', 'المفضلة', 'السلة', 'طلباتي', 'حسابي'];
 
     return Scaffold(
       appBar: AppBar(
         title: Text(titles[navigationShell.currentIndex]),
         actions: [
-          if (navigationShell.currentIndex != 1)
+          if (navigationShell.currentIndex != 2)
             BlocBuilder<CartBloc, CartState>(
               builder: (context, cartState) {
                 final count = cartState.cartItems.length;
@@ -148,7 +167,7 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.shopping_cart_outlined),
-                      onPressed: () => navigationShell.goBranch(1),
+                      onPressed: () => _onTap(context, 2),
                     ),
                     if (count > 0)
                       Positioned(
@@ -192,12 +211,17 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
       body: navigationShell,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: navigationShell.currentIndex,
-        onTap: (index) => navigationShell.goBranch(index),
+        onTap: (i) => _onTap(context, i),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
             label: 'الرئيسية',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.favorite_border),
+            activeIcon: Icon(Icons.favorite),
+            label: 'المفضلة',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_cart_outlined),
@@ -220,5 +244,4 @@ class ScaffoldWithBottomNavBar extends StatelessWidget {
   }
 }
 
-
-//flutter run --dart-define=SUPABASE_URL=https://kjsovaohtawvaivaplkg.supabase.co --dart-define=SUPABASE_ANON_KEY=sb_publishable_0Q3iN9W6TLJ9  vJH64gAjsA_IvuOTDWx
+//flutter run --dart-define=SUPABASE_URL=https://kjsovaohtawvaivaplkg.supabase.co --dart-define=SUPABASE_ANON_KEY=sb_publishable_0Q3iN9W6TLJ9vJH64gAjsA_IvuOTDWx

@@ -10,10 +10,10 @@ class OrderItemModel extends OrderItem {
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     return OrderItemModel(
-      productId: json['product_id'] as String,
-      productName: json['product_name'] as String,
-      quantity: json['quantity'] as int,
-      price: (json['price'] as num).toDouble(),
+      productId: json['product_id'] as String? ?? '',
+      productName: json['product_name'] as String? ?? '',
+      quantity: json['quantity'] as int? ?? 0,
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -38,14 +38,16 @@ class OrderModel extends Order {
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     final rawItems = json['items'] as List<dynamic>? ?? [];
     return OrderModel(
-      id: json['id'] as String,
-      userId: json['user_id'] as String,
+      id: json['id'] as String? ?? '',
+      userId: json['user_id'] as String? ?? '',
       items: rawItems
           .map((e) => OrderItemModel.fromJson(e as Map<String, dynamic>))
           .toList(),
-      total: (json['total'] as num).toDouble(),
-      status: json['status'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      total: (json['total'] as num?)?.toDouble() ?? 0.0,
+      status: json['status'] as String? ?? 'pending',
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
     );
   }
 
