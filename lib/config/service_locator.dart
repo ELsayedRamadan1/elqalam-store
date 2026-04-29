@@ -52,8 +52,6 @@ import '../domain/usecases/get_favorites_usecase.dart';
 import '../domain/usecases/add_favorite_usecase.dart';
 import '../domain/usecases/remove_favorite_usecase.dart';
 
-// Usecases — Reviews
-
 // Blocs
 import '../presentation/blocs/auth/auth_bloc.dart';
 import '../presentation/blocs/product/product_bloc.dart';
